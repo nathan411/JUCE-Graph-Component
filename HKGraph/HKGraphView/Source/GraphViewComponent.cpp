@@ -352,13 +352,15 @@ void GraphViewComponent::nodeMouseDrag(NodeComponent *node, const juce::MouseEve
 
 void GraphViewComponent::nodeMouseDown(NodeComponent *node, const juce::MouseEvent &mouseEvent) {
   recordState();
-  if (!mouseEvent.mods.isShiftDown() && nodeMultiSelectionOn && !node->selected) {
-    nodeMultiSelectionOn = false;
-  }
-  node->selected = !node->selected;
-  node->repaint();
 
-  if (!mouseEvent.mods.isShiftDown() && !nodeMultiSelectionOn) {
+  if (mouseEvent.mods.isShiftDown()) {
+    node->selected = !node->selected;
+    nodeMultiSelectionOn = true;
+  } else {
+    // Normal click / drag: select this node and deselect other nodes
+    node->selected = true;
+    nodeMultiSelectionOn = false;
+
     for (auto &[_, n]: nodes) {
       if (n != node) {
         n->selected = false;
@@ -369,9 +371,9 @@ void GraphViewComponent::nodeMouseDown(NodeComponent *node, const juce::MouseEve
       e->selected = false;
       e->repaint();
     }
-  } else {
-    nodeMultiSelectionOn = true;
   }
+
+  node->repaint();
 
   if (onNodeSelected) {
     if (node->selected && !nodeMultiSelectionOn) {
