@@ -184,6 +184,8 @@ public:
 
   void zoomOut();
 
+  void zoomAt(juce::Point<float> pivot, float factor);
+
   void zoomToOriginalSize();
 
   void selectAll();

@@ -667,7 +667,43 @@ void GraphViewComponent::mouseUp(const juce::MouseEvent &mouseEvent) {
   removeChildComponent(selector.get());
 }
 
+void GraphViewComponent::zoomAt(juce::Point<float> pivot, float factor) {
+  for (auto &[_, n] : nodes) {
+    float newScale = std::clamp(n->scaleFactor * factor, theme.scaleMin, theme.scaleMax);
+    float actualFactor = newScale / n->scaleFactor;
+    if (std::abs(actualFactor - 1.0f) < 0.0001f) continue;
+
+    n->scaleFactor = newScale;
+    n->scale = juce::AffineTransform::scale(n->scaleFactor);
+
+    // Zoom centered around pivot:
+    // P_new = pivot + (P_old - pivot) * actualFactor
+    auto currentPos = juce::Point<float>(n->translation.getTranslationX(), n->translation.getTranslationY());
+    auto newPos = pivot + (currentPos - pivot) * actualFactor;
+    n->translation = juce::AffineTransform::translation(newPos);
+    n->setTransform(n->scale.followedBy(n->translation));
+  }
+
+  for (auto &[_, e] : edges) {
+    calculateEdgeBounds(e);
+    e->repaint();
+  }
+}
+
 void GraphViewComponent::mouseWheelMove(const juce::MouseEvent &e, const juce::MouseWheelDetails &wheel) {
+  // Ctrl or Command key + scroll -> Zoom centered on mouse cursor
+  if (e.mods.isCtrlDown() || e.mods.isCommandDown()) {
+    float wheelAmount = wheel.deltaY != 0.0f ? wheel.deltaY : wheel.deltaX;
+    if (wheelAmount != 0.0f) {
+      // Zoom factor: e.g. wheelAmount = 0.1 -> 1.1x, -0.1 -> ~0.9x
+      float factor = std::pow(2.0f, wheelAmount * 2.0f);
+      auto mousePos = e.getPosition().toFloat();
+      zoomAt(mousePos, factor);
+      recordState();
+    }
+    return;
+  }
+
   const float sensitivity = 200.0f;
   float dx = wheel.deltaX * sensitivity;
   float dy = wheel.deltaY * sensitivity;
