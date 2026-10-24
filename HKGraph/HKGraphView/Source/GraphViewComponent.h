@@ -177,6 +177,8 @@ public:
 
   void debug(const std::string &action) const;
 
+  void cleanupDynamicInputsForNode(NodeComponent *nodeComp);
+
 private:
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GraphViewComponent)

@@ -492,11 +492,52 @@ void GraphViewComponent::calculateEdgeBounds(EdgeComponent *edge) {
   edge->setBounds(left, top, w, h);
 }
 
+void GraphViewComponent::cleanupDynamicInputsForNode(NodeComponent *targetNodeComp) {
+  if (targetNodeComp == nullptr) return;
+  auto targetProcessor = targetNodeComp->m_processor;
+  if (targetProcessor == nullptr || !targetProcessor->hasDynamicInputs()) return;
+
+  // Find all unconnected input pins
+  std::vector<uuid> unconnectedPins;
+  // Iterate in sorted order of pins so we know which are trailing
+  for (const auto *pinComp : targetNodeComp->ordered_ins) {
+    auto pinId = pinComp->model.m_id;
+    bool isConnected = false;
+    for (const auto &[_, edgeModel] : graph->m_edges) {
+      if (edgeModel.m_target_pin_id == pinId) {
+        isConnected = true;
+        break;
+      }
+    }
+    if (!isConnected) {
+      unconnectedPins.push_back(pinId);
+    }
+  }
+
+  // If more than 1 unconnected input pin, remove the extra ones (keep at least 1)
+  bool changed = false;
+  while (unconnectedPins.size() > 1) {
+    auto pinToRemove = unconnectedPins.back();
+    unconnectedPins.pop_back();
+    targetProcessor->removeInputPin(pinToRemove);
+    changed = true;
+  }
+
+  if (changed) {
+    targetNodeComp->rebuildPins();
+    for (auto &[_, remEdge] : edges) {
+      if (remEdge->startPin->owner == targetNodeComp || remEdge->endPin->owner == targetNodeComp) {
+        calculateEdgeBounds(remEdge);
+        remEdge->repaint();
+      }
+    }
+  }
+}
+
 void GraphViewComponent::edgeMouseDoubleClick(EdgeComponent *edge, const juce::MouseEvent &e) {
   juce::ignoreUnused(e);
   auto targetPin = edge->endPin;
   auto targetNodeComp = targetPin ? const_cast<NodeComponent *>(targetPin->owner) : nullptr;
-  auto targetProcessor = targetNodeComp ? targetNodeComp->m_processor : nullptr;
 
   if (graph->disconnect(edge->model.m_id)) {
     edge->removeMouseListener(mouseListener.get());
@@ -504,38 +545,7 @@ void GraphViewComponent::edgeMouseDoubleClick(EdgeComponent *edge, const juce::M
     edges.erase(edge->model.m_id);
     delete edge;
 
-    // Dynamic input cleanup: if target node has more than one unconnected input pin,
-    // remove trailing unconnected ones until only 1 unconnected input pin remains.
-    if (targetProcessor != nullptr && targetProcessor->hasDynamicInputs()) {
-      std::vector<uuid> unconnectedPins;
-      for (const auto &[pinId, _] : targetProcessor->m_ins) {
-        bool isConnected = false;
-        for (const auto &[_, edgeModel] : graph->m_edges) {
-          if (edgeModel.m_target_pin_id == pinId) {
-            isConnected = true;
-            break;
-          }
-        }
-        if (!isConnected) {
-          unconnectedPins.push_back(pinId);
-        }
-      }
-
-      // If more than 1 unconnected input pin, remove the extra ones (keep at least 1)
-      while (unconnectedPins.size() > 1) {
-        auto pinToRemove = unconnectedPins.back();
-        unconnectedPins.pop_back();
-        targetProcessor->removeInputPin(pinToRemove);
-      }
-
-      targetNodeComp->rebuildPins();
-      for (auto &[_, remEdge] : edges) {
-        if (remEdge->startPin->owner == targetNodeComp || remEdge->endPin->owner == targetNodeComp) {
-          calculateEdgeBounds(remEdge);
-          remEdge->repaint();
-        }
-      }
-    }
+    cleanupDynamicInputsForNode(targetNodeComp);
   }
   assertions();
 }
@@ -729,10 +739,16 @@ void GraphViewComponent::zoomToOriginalSize() {
 
 void GraphViewComponent::removeSelected() {
   // remove edges
+  std::unordered_set<NodeComponent *> targetNodesToCheck;
   auto edge_p = std::begin(edges);
   while (edge_p != std::end(edges)) {
     EdgeComponent *e = edge_p->second;
     if (e->selected) {
+      auto targetPin = e->endPin;
+      auto targetNodeComp = targetPin ? const_cast<NodeComponent *>(targetPin->owner) : nullptr;
+      if (targetNodeComp != nullptr) {
+        targetNodesToCheck.insert(targetNodeComp);
+      }
       if (graph->disconnect(edge_p->first)) {
         e->removeMouseListener(mouseListener.get());
         removeChildComponent(e);
@@ -742,6 +758,10 @@ void GraphViewComponent::removeSelected() {
     } else {
       ++edge_p;
     }
+  }
+
+  for (auto *targetNodeComp : targetNodesToCheck) {
+    cleanupDynamicInputsForNode(targetNodeComp);
   }
 
   assertions();
