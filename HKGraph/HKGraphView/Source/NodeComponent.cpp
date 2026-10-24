@@ -93,7 +93,7 @@ void NodeComponent::paint(juce::Graphics &g) {
   juce::Path p;
   // calculate the width based on the name text
   auto font = g.getCurrentFont();
-  auto preferredWidth = static_cast<int>(std::ceil(font.getStringWidthFloat(m_processor->m_name)));
+  auto preferredWidth = static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(font, m_processor->m_name)));
   if (preferredWidth > getWidth()) {
     setSize(preferredWidth + 10, getHeight());
   }
