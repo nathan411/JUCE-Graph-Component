@@ -298,6 +298,15 @@ void GraphViewComponent::pinMouseUp(NodeComponent::PinComponent *pin, const juce
 
     if (targetPin != nullptr) {
       drawConnector(targetPin);
+    } else {
+      // Released into empty void: open creation menu with compatible nodes and auto-plug
+      auto startPin = edgeDrawer->startPin;
+      edgeDrawer->startPin = nullptr;
+      edgeDrawer->endPin = nullptr;
+      removeChildComponent(edgeDrawer.get());
+
+      popupMenuWithSourcePin(position.toFloat(), startPin);
+      return;
     }
   }
 

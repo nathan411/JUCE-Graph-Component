@@ -176,6 +176,10 @@ public:
     juce::ignoreUnused(e);
   }
 
+  virtual void popupMenuWithSourcePin(const juce::Point<float> &position, NodeComponent::PinComponent *sourcePin) {
+    juce::ignoreUnused(position, sourcePin);
+  }
+
   bool keyPressed(const juce::KeyPress &key) override;
 
   void recordState();
