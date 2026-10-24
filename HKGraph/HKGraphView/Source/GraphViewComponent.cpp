@@ -583,7 +583,24 @@ void GraphViewComponent::recordState() {
   }
 }
 
+void GraphViewComponent::panBy(juce::Point<float> delta) {
+  for (auto &[_, n] : nodes) {
+    n->translation = n->translation.translated(delta);
+    n->setTransform(n->scale.followedBy(n->translation));
+  }
+  for (auto &[_, e] : edges) {
+    calculateEdgeBounds(e);
+    e->repaint();
+  }
+}
+
 void GraphViewComponent::mouseDown(const juce::MouseEvent &mouseEvent) {
+  if (mouseEvent.mods.isMiddleButtonDown()) {
+    isPanning = true;
+    panLastMousePosition = mouseEvent.getPosition();
+    setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+    return;
+  }
 
   if (mouseEvent.mods.isPopupMenu()) {
     popupMenu(mouseEvent);
@@ -614,6 +631,13 @@ void GraphViewComponent::mouseDown(const juce::MouseEvent &mouseEvent) {
 }
 
 void GraphViewComponent::mouseDrag(const juce::MouseEvent &mouseEvent) {
+  if (isPanning) {
+    auto currentPos = mouseEvent.getPosition();
+    auto delta = (currentPos - panLastMousePosition).toFloat();
+    panLastMousePosition = currentPos;
+    panBy(delta);
+    return;
+  }
 
   // draw a selection box
   auto position = mouseEvent.getMouseDownPosition();
@@ -650,6 +674,12 @@ void GraphViewComponent::mouseDrag(const juce::MouseEvent &mouseEvent) {
 
 void GraphViewComponent::mouseUp(const juce::MouseEvent &mouseEvent) {
   juce::ignoreUnused(mouseEvent);
+  if (isPanning) {
+    isPanning = false;
+    setMouseCursor(juce::MouseCursor::NormalCursor);
+    recordState();
+    return;
+  }
   removeChildComponent(selector.get());
 }
 

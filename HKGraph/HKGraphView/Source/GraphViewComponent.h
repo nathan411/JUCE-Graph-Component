@@ -23,6 +23,10 @@ public:
   int hsbLast{};
   juce::ScrollBar vsb{true};
   int vsbLast{};
+  bool isPanning = false;
+  juce::Point<int> panLastMousePosition;
+
+  void panBy(juce::Point<float> delta);
 
   explicit GraphViewComponent(Graph *sharedGraph);
 
@@ -33,6 +37,10 @@ public:
     explicit ChildrenMouseListener(GraphViewComponent *graphViewComponent) : view(graphViewComponent) {}
 
     void mouseDown(const juce::MouseEvent &e) override {
+      if (e.mods.isMiddleButtonDown()) {
+        view->mouseDown(e.getEventRelativeTo(view));
+        return;
+      }
       if (auto node = dynamic_cast<NodeComponent *>(e.originalComponent)) {
         view->nodeMouseDown(node, e);
       } else if (auto edge = dynamic_cast<EdgeComponent *>(e.originalComponent)) {
@@ -41,6 +49,10 @@ public:
     }
 
     void mouseUp(const juce::MouseEvent &e) override {
+      if (view->isPanning) {
+        view->mouseUp(e.getEventRelativeTo(view));
+        return;
+      }
       if (auto node = dynamic_cast<NodeComponent *>(e.originalComponent)) {
         view->nodeMouseUp(node, e);
       } else if (auto pin = dynamic_cast<NodeComponent::PinComponent *>(e.originalComponent)) {
@@ -51,6 +63,10 @@ public:
     }
 
     void mouseDrag(const juce::MouseEvent &e) override {
+      if (view->isPanning) {
+        view->mouseDrag(e.getEventRelativeTo(view));
+        return;
+      }
       if (auto node = dynamic_cast<NodeComponent *>(e.originalComponent)) {
         view->nodeMouseDrag(node, e);
       } else if (auto pin = dynamic_cast<NodeComponent::PinComponent *>(e.originalComponent)) {
