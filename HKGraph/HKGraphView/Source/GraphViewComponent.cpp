@@ -134,8 +134,10 @@ void GraphViewComponent::addNode(NodeProcessor *processor, const juce::Point<flo
   auto ins = processor->m_ins.size();
   auto outs = processor->m_outs.size();
   auto maxNumPins = static_cast<int>(std::max(ins, outs));
-  auto w = (maxNumPins * theme.pinWidth) + ((maxNumPins + 1) * theme.pinSpacing);
-  addNodeSized(processor, w, theme.nodeHeight, position);
+  auto h = (maxNumPins * (theme.pinWidth + theme.pinSpacing)) + theme.pinSpacing;
+  h = std::max(h, theme.nodeHeight);
+  int w = 110;
+  addNodeSized(processor, w, h, position);
 }
 
 void GraphViewComponent::addNodeSized(NodeProcessor *processor,
@@ -145,9 +147,9 @@ void GraphViewComponent::addNodeSized(NodeProcessor *processor,
   auto ins = processor->m_ins.size();
   auto outs = processor->m_outs.size();
   auto maxNumPins = static_cast<int>(std::max(ins, outs));
-  auto w = (maxNumPins * theme.pinWidth) + ((maxNumPins + 1) * theme.pinSpacing);
-  w = std::max(w, width);
-  auto h = std::max(theme.nodeHeight, height);
+  auto h = (maxNumPins * (theme.pinWidth + theme.pinSpacing)) + theme.pinSpacing;
+  h = std::max({theme.nodeHeight, height, h});
+  auto w = std::max(110, width);
   auto node = new NodeComponent(theme, processor);
   node->setBounds(0, 0, w, h);
   node->translation = juce::AffineTransform::translation(position);
@@ -260,7 +262,7 @@ void GraphViewComponent::pinMouseDrag(NodeComponent::PinComponent *pin, const ju
   edgeDrawer->startPin = pin;
   edgeDrawer->endPin = nullptr;
   edgeDrawer->currentEndPosition = position;
-  edgeDrawer->calculateBounds(getLocalPoint(pin, juce::Point<int>(theme.pinWidth / 2, theme.pinHeight / 2)), position);
+  edgeDrawer->calculateBounds(getLocalPoint(pin, juce::Point<int>(pin->getWidth() / 2, pin->getHeight() / 2)), position);
   addAndMakeVisible(edgeDrawer.get());
 }
 

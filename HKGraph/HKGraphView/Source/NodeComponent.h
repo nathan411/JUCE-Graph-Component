@@ -38,6 +38,8 @@ class PinComponent : public juce::Component, public juce::SettableTooltipClient 
 
   int boxHeight();
 
+  int boxWidth();
+
   juce::Rectangle<int> boxBounds();
 
   void paint(juce::Graphics &g) override;

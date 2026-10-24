@@ -76,16 +76,20 @@ bool NodeComponent::hasOuts() const {
 }
 
 int NodeComponent::boxHeight() {
-  auto h = getHeight();
-  if (hasIns()) h -= theme.pinHeight;
-  if (hasOuts()) h -= theme.pinHeight;
-  return h;
+  return getHeight();
+}
+
+int NodeComponent::boxWidth() {
+  auto w = getWidth();
+  if (hasIns()) w -= theme.pinHeight;
+  if (hasOuts()) w -= theme.pinHeight;
+  return w;
 }
 
 juce::Rectangle<int> NodeComponent::boxBounds() {
   auto local = getLocalBounds();
-  if (hasIns()) local.removeFromTop(theme.pinHeight);
-  if (hasOuts()) local.removeFromBottom(theme.pinHeight);
+  if (hasIns()) local.removeFromLeft(theme.pinHeight);
+  if (hasOuts()) local.removeFromRight(theme.pinHeight);
   return local;
 }
 
@@ -173,57 +177,60 @@ void NodeComponent::rebuildPins() {
 }
 
 void NodeComponent::resized() {
-  // Ensure node width is enough to hold all pins
+  // Ensure node height is enough to hold all pins vertically
   auto maxPins = std::max(ordered_ins.size(), ordered_outs.size());
-  auto requiredWidth = static_cast<int>(maxPins * (theme.pinWidth + theme.pinSpacing) + theme.pinSpacing);
-  if (requiredWidth > getWidth()) {
-    setSize(requiredWidth, getHeight());
+  auto requiredHeight = static_cast<int>(maxPins * (theme.pinWidth + theme.pinSpacing) + theme.pinSpacing);
+  if (requiredHeight > getHeight()) {
+    setSize(getWidth(), requiredHeight);
   }
 
+  // Left side: Input pins
   {
-    auto x = theme.pinSpacing;
-    auto y = 0;
-    auto w = theme.pinWidth;
-    auto h = theme.pinHeight;
+    auto x = 0;
+    auto y = theme.pinSpacing;
+    auto w = theme.pinHeight; // 12px wide extending outwards
+    auto h = theme.pinWidth;  // 16px tall along the edge
     for (auto &p: ordered_ins) {
       p->setBounds(x, y, w, h);
       addAndMakeVisible(p);
-      x += w + theme.pinSpacing;
+      y += h + theme.pinSpacing;
     }
   }
+
+  // Right side: Output pins
   {
-    auto x = theme.pinSpacing;
-    auto y = getHeight() - theme.pinHeight;
-    auto w = theme.pinWidth;
-    auto h = theme.pinHeight;
+    auto x = getWidth() - theme.pinHeight;
+    auto y = theme.pinSpacing;
+    auto w = theme.pinHeight;
+    auto h = theme.pinWidth;
     for (auto &p: ordered_outs) {
       p->setBounds(x, y, w, h);
       addAndMakeVisible(p);
-      x += w + theme.pinSpacing;
+      y += h + theme.pinSpacing;
     }
   }
 }
 
 bool NodeComponent::hitTest(int x, int y) {
   auto inBox = boxBounds().contains(x, y);
-  auto inTopPins = false;
-  auto inBottomPins = false;
+  auto inLeftPins = false;
+  auto inRightPins = false;
 
   for (auto &[_, p]: ins) {
     if (p->getBounds().contains(x, y)) {
-      inTopPins = true;
+      inLeftPins = true;
       break;
     }
   }
 
   for (auto &[_, p]: outs) {
     if (p->getBounds().contains(x, y)) {
-      inBottomPins = true;
+      inRightPins = true;
       break;
     }
   }
 
-  return inBox || inTopPins || inBottomPins;
+  return inBox || inLeftPins || inRightPins;
 }
 
 void NodeComponent::mouseDown(const juce::MouseEvent &mouseEvent) {
@@ -280,7 +287,7 @@ NodeComponent::PinComponent::PinComponent(
 
 void NodeComponent::PinComponent::paint(juce::Graphics &g) {
   juce::Path p;
-  p.addRoundedRectangle(0.0f, 0.0f, static_cast<float>(owner->theme.pinWidth), static_cast<float>(owner->theme.pinHeight), 2.5f);
+  p.addRoundedRectangle(0.0f, 0.0f, static_cast<float>(getWidth()), static_cast<float>(getHeight()), 2.5f);
   g.setColour(juce::Colour(cPinBackgroundCurrent));
   g.fillPath(p);
   g.setColour(juce::Colours::white.withAlpha(0.25f));

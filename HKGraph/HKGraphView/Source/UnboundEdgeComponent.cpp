@@ -23,9 +23,9 @@ void UnboundEdgeComponent::paint(juce::Graphics &g) {
 
   path.startNewSubPath(pstart.x, pstart.y);
   if (inverted) {
-    path.cubicTo(w, h * 0.5f, 0.0f, h * 0.5f, pend.x, pend.y);
+    path.cubicTo(0.0f, pstart.y, w, pend.y, pend.x, pend.y);
   } else {
-    path.cubicTo(0.0f, h * 0.5f, w, h * 0.5f, pend.x, pend.y);
+    path.cubicTo(w * 0.5f, pstart.y, w * 0.5f, pend.y, pend.x, pend.y);
   }
   path.setUsingNonZeroWinding(true);
   juce::PathStrokeType ps(1.0f);
