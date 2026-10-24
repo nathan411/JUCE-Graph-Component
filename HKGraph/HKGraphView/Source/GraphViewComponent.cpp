@@ -287,7 +287,32 @@ void GraphViewComponent::pinMouseUp(NodeComponent::PinComponent *pin, const juce
   // If we were dragging a cable, check what component is under the mouse upon release
   if (edgeDrawer->startPin != nullptr) {
     auto *compUnderMouse = getComponentAt(position);
-    if (auto *targetPin = dynamic_cast<NodeComponent::PinComponent *>(compUnderMouse)) {
+    NodeComponent::PinComponent *targetPin = dynamic_cast<NodeComponent::PinComponent *>(compUnderMouse);
+
+    // If mouse was released over the NodeComponent itself (e.g. near the pin header/footer),
+    // find the closest compatible pin on that node to make plugging easy and forgiving
+    if (targetPin == nullptr) {
+      if (auto *nodeComp = dynamic_cast<NodeComponent *>(compUnderMouse)) {
+        auto wantedKind = (edgeDrawer->startPin->model.m_kind == Graph::Node::PinKind::Out)
+                            ? Graph::Node::PinKind::In
+                            : Graph::Node::PinKind::Out;
+        const auto &pinsToCheck = (wantedKind == Graph::Node::PinKind::In)
+                                    ? nodeComp->ordered_ins
+                                    : nodeComp->ordered_outs;
+
+        float bestDistance = std::numeric_limits<float>::max();
+        for (auto *p : pinsToCheck) {
+          auto pinCenter = getLocalPoint(p, juce::Point<int>(p->getWidth() / 2, p->getHeight() / 2));
+          auto dist = position.toFloat().getDistanceFrom(pinCenter.toFloat());
+          if (dist < bestDistance) {
+            bestDistance = dist;
+            targetPin = p;
+          }
+        }
+      }
+    }
+
+    if (targetPin != nullptr) {
       drawConnector(targetPin);
     }
   }

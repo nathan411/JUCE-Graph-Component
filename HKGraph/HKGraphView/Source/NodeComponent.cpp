@@ -280,9 +280,11 @@ NodeComponent::PinComponent::PinComponent(
 
 void NodeComponent::PinComponent::paint(juce::Graphics &g) {
   juce::Path p;
-  p.addRectangle(0, 0, static_cast<float>(owner->theme.pinWidth), static_cast<float>(owner->theme.pinHeight));
+  p.addRoundedRectangle(0.0f, 0.0f, static_cast<float>(owner->theme.pinWidth), static_cast<float>(owner->theme.pinHeight), 2.5f);
   g.setColour(juce::Colour(cPinBackgroundCurrent));
   g.fillPath(p);
+  g.setColour(juce::Colours::white.withAlpha(0.25f));
+  g.strokePath(p, juce::PathStrokeType(1.0f));
 }
 
 

@@ -1,10 +1,10 @@
 #pragma once
 
 struct GraphViewTheme {
-  int pinWidth = 10;
-  int pinHeight = 7;
-  int pinSpacing = 10;
-  int nodeHeight = 40;
+  int pinWidth = 16;
+  int pinHeight = 12;
+  int pinSpacing = 12;
+  int nodeHeight = 50;
   int hostComponentDragAreaHeight = 30;
   float edgeStrokeWidth = 3.0f;
 
