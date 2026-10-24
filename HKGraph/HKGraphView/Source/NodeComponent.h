@@ -44,6 +44,8 @@ class PinComponent : public juce::Component, public juce::SettableTooltipClient 
 
   void resized() override;
 
+  void rebuildPins();
+
   bool hitTest(int x, int y) override;
 
   void mouseDown(const juce::MouseEvent &e) override;

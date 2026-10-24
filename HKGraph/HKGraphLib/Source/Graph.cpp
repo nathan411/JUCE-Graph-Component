@@ -112,6 +112,39 @@ bool Graph::disconnect(const uuid &edge_id) {
   return n != 0;
 }
 
+bool Graph::wouldCreateCycle(const uuid &source_node_id, const uuid &target_node_id) const {
+  if (source_node_id == target_node_id) {
+    return true;
+  }
+
+  // To check if adding source_node_id -> target_node_id creates a cycle,
+  // we check if source_node_id is already reachable from target_node_id using DFS.
+  std::vector<uuid> stack;
+  std::unordered_set<uuid> visited;
+
+  stack.push_back(target_node_id);
+  visited.insert(target_node_id);
+
+  while (!stack.empty()) {
+    auto current = stack.back();
+    stack.pop_back();
+
+    for (const auto &[_, edge] : m_edges) {
+      if (edge.m_source_node_id == current) {
+        if (edge.m_target_node_id == source_node_id) {
+          return true;
+        }
+        if (visited.find(edge.m_target_node_id) == visited.end()) {
+          visited.insert(edge.m_target_node_id);
+          stack.push_back(edge.m_target_node_id);
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 void Graph::add_listener(Graph::Listener *listener) {
   std::lock_guard<std::mutex> lock(m_mutex);
   m_listeners.push_back(listener);

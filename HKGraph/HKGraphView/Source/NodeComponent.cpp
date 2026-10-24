@@ -118,7 +118,68 @@ void NodeComponent::paint(juce::Graphics &g) {
   g.drawText(m_processor->m_name, bounds, juce::Justification::centred, true);
 }
 
+void NodeComponent::rebuildPins() {
+  // Remove existing PinComponents that are no longer in processor
+  for (auto it = ins.begin(); it != ins.end(); ) {
+    if (m_processor->m_ins.find(it->first) == m_processor->m_ins.end()) {
+      removeChildComponent(it->second.get());
+      it = ins.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  for (auto it = outs.begin(); it != outs.end(); ) {
+    if (m_processor->m_outs.find(it->first) == m_processor->m_outs.end()) {
+      removeChildComponent(it->second.get());
+      it = outs.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  // Add new pins
+  for (auto &in : m_processor->m_ins) {
+    if (ins.find(in.first) == ins.end()) {
+      auto pin = std::make_unique<PinComponent>(this, in.second);
+      pin->setTooltip(juce::String(pin->model.m_order + 1));
+      ins[pin->model.m_id] = std::move(pin);
+    }
+  }
+  for (auto &out : m_processor->m_outs) {
+    if (outs.find(out.first) == outs.end()) {
+      auto pin = std::make_unique<PinComponent>(this, out.second);
+      pin->setTooltip(juce::String(pin->model.m_order + 1));
+      outs[pin->model.m_id] = std::move(pin);
+    }
+  }
+
+  // Re-order
+  ordered_ins.clear();
+  for (auto &pair : ins) {
+    ordered_ins.push_back(pair.second.get());
+  }
+  std::sort(std::begin(ordered_ins), std::end(ordered_ins),
+            [&](auto &l, auto &r) { return l->model.m_order < r->model.m_order; });
+
+  ordered_outs.clear();
+  for (auto &pair : outs) {
+    ordered_outs.push_back(pair.second.get());
+  }
+  std::sort(std::begin(ordered_outs), std::end(ordered_outs),
+            [&](auto &l, auto &r) { return l->model.m_order < r->model.m_order; });
+
+  resized();
+  repaint();
+}
+
 void NodeComponent::resized() {
+  // Ensure node width is enough to hold all pins
+  auto maxPins = std::max(ordered_ins.size(), ordered_outs.size());
+  auto requiredWidth = static_cast<int>(maxPins * (theme.pinWidth + theme.pinSpacing) + theme.pinSpacing);
+  if (requiredWidth > getWidth()) {
+    setSize(requiredWidth, getHeight());
+  }
+
   {
     auto x = theme.pinSpacing;
     auto y = 0;

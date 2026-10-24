@@ -17,6 +17,7 @@ public:
 
   bool nodeMultiSelectionOn = false;
   bool edgeMultiSelectionOn = false;
+  std::function<void(NodeProcessor*)> onNodeSelected;
   GraphViewTheme theme;
   juce::ScrollBar hsb{false};
   int hsbLast{};

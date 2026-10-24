@@ -215,6 +215,38 @@ GraphViewComponent::addEdge(NodeComponent::PinComponent *source, NodeComponent::
     addAndMakeVisible(edge);
     edge->toBack();
     result = edge;
+
+    // Dynamic input pin support: if the target node supports dynamic inputs,
+    // check if it has any unconnected input pins left. If not, add a new one.
+    auto targetNodeComp = const_cast<NodeComponent *>(target->owner);
+    auto targetProcessor = targetNodeComp->m_processor;
+    if (targetProcessor != nullptr && targetProcessor->hasDynamicInputs()) {
+      bool hasUnconnectedInPin = false;
+      for (const auto &[pinId, _] : targetProcessor->m_ins) {
+        bool pinConnected = false;
+        for (const auto &[_, edgeModel] : graph->m_edges) {
+          if (edgeModel.m_target_pin_id == pinId) {
+            pinConnected = true;
+            break;
+          }
+        }
+        if (!pinConnected) {
+          hasUnconnectedInPin = true;
+          break;
+        }
+      }
+      if (!hasUnconnectedInPin) {
+        targetProcessor->addInputPin();
+        targetNodeComp->rebuildPins();
+        // Recalculate bounds of all connected edges for this node since node size or pin layout might have shifted
+        for (auto &[_, e] : edges) {
+          if (e->startPin->owner == targetNodeComp || e->endPin->owner == targetNodeComp) {
+            calculateEdgeBounds(e);
+            e->repaint();
+          }
+        }
+      }
+    }
   }
   assertions();
   return result;
@@ -273,10 +305,25 @@ bool GraphViewComponent::isLegalEdge(NodeComponent::PinComponent *start, NodeCom
       [&](auto &e) -> bool {
         return e.second->isConnecting(start, end);
       });
-  return
-    existing == std::end(edges) &&
-    start->model.m_kind != end->model.m_kind &&
-    start->owner != end->owner;
+  if (existing != std::end(edges) ||
+      start->model.m_kind == end->model.m_kind ||
+      start->owner == end->owner) {
+    return false;
+  }
+
+  // Cycle detection
+  auto sourceNodeId = (start->model.m_kind == Graph::Node::PinKind::Out)
+                        ? start->owner->m_processor->m_id
+                        : end->owner->m_processor->m_id;
+  auto targetNodeId = (start->model.m_kind == Graph::Node::PinKind::Out)
+                        ? end->owner->m_processor->m_id
+                        : start->owner->m_processor->m_id;
+
+  if (graph->wouldCreateCycle(sourceNodeId, targetNodeId)) {
+    return false;
+  }
+
+  return true;
 }
 
 void GraphViewComponent::nodeMouseDrag(NodeComponent *node, const juce::MouseEvent &mouseEvent) {
@@ -324,6 +371,14 @@ void GraphViewComponent::nodeMouseDown(NodeComponent *node, const juce::MouseEve
     }
   } else {
     nodeMultiSelectionOn = true;
+  }
+
+  if (onNodeSelected) {
+    if (node->selected && !nodeMultiSelectionOn) {
+      onNodeSelected(node->m_processor);
+    } else {
+      onNodeSelected(nullptr);
+    }
   }
 }
 
@@ -416,11 +471,48 @@ void GraphViewComponent::calculateEdgeBounds(EdgeComponent *edge) {
 
 void GraphViewComponent::edgeMouseDoubleClick(EdgeComponent *edge, const juce::MouseEvent &e) {
   juce::ignoreUnused(e);
+  auto targetPin = edge->endPin;
+  auto targetNodeComp = targetPin ? const_cast<NodeComponent *>(targetPin->owner) : nullptr;
+  auto targetProcessor = targetNodeComp ? targetNodeComp->m_processor : nullptr;
+
   if (graph->disconnect(edge->model.m_id)) {
     edge->removeMouseListener(mouseListener.get());
     removeChildComponent(edge);
     edges.erase(edge->model.m_id);
     delete edge;
+
+    // Dynamic input cleanup: if target node has more than one unconnected input pin,
+    // remove trailing unconnected ones until only 1 unconnected input pin remains.
+    if (targetProcessor != nullptr && targetProcessor->hasDynamicInputs()) {
+      std::vector<uuid> unconnectedPins;
+      for (const auto &[pinId, _] : targetProcessor->m_ins) {
+        bool isConnected = false;
+        for (const auto &[_, edgeModel] : graph->m_edges) {
+          if (edgeModel.m_target_pin_id == pinId) {
+            isConnected = true;
+            break;
+          }
+        }
+        if (!isConnected) {
+          unconnectedPins.push_back(pinId);
+        }
+      }
+
+      // If more than 1 unconnected input pin, remove the extra ones (keep at least 1)
+      while (unconnectedPins.size() > 1) {
+        auto pinToRemove = unconnectedPins.back();
+        unconnectedPins.pop_back();
+        targetProcessor->removeInputPin(pinToRemove);
+      }
+
+      targetNodeComp->rebuildPins();
+      for (auto &[_, remEdge] : edges) {
+        if (remEdge->startPin->owner == targetNodeComp || remEdge->endPin->owner == targetNodeComp) {
+          calculateEdgeBounds(remEdge);
+          remEdge->repaint();
+        }
+      }
+    }
   }
   assertions();
 }
@@ -446,6 +538,9 @@ void GraphViewComponent::mouseDown(const juce::MouseEvent &mouseEvent) {
     n->repaint();
   }
   nodeMultiSelectionOn = false;
+  if (onNodeSelected) {
+    onNodeSelected(nullptr);
+  }
 
   // edge selection
   for (auto &[_, e]: edges) {

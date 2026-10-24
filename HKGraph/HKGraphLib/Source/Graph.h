@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <map>
+#include <unordered_set>
+#include <vector>
 #include <any>
 #include <future>
 #include "uuid.h"
@@ -108,6 +110,8 @@ struct Graph {
   std::optional<Edge> connect(const uuid &source_pin_id, const uuid &target_pin_id);
 
   bool disconnect(const uuid &edge_id);
+
+  bool wouldCreateCycle(const uuid &source_node_id, const uuid &target_node_id) const;
 
   void debug() const {
     std::cout
