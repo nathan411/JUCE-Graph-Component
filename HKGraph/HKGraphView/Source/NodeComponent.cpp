@@ -33,15 +33,15 @@ NodeComponent::~NodeComponent() = default;
 
 void NodeComponent::apply(const NodeDescriptor *descriptor) {
   this->selected = descriptor->selected;
-  this->cNodeBackgroundCurrent = descriptor->cNodeBackgroundCurrent;
-  this->scaleFactor = descriptor->scaleFactor;
+  this->cNodeBackgroundCurrent = descriptor->cNodeBackgroundCurrent != 0 ? descriptor->cNodeBackgroundCurrent : theme.cNodeBackground;
+  this->scaleFactor = descriptor->scaleFactor > 0.001f ? descriptor->scaleFactor : theme.initialScaleFactor;
   this->translation = descriptor->translation;
-  this->scale = descriptor->scale;
+  this->scale = std::abs(descriptor->scale.getDeterminant()) > 0.0001f ? descriptor->scale : juce::AffineTransform::scale(this->scaleFactor);
   this->setBounds(
     static_cast<int>(descriptor->position.x),
     static_cast<int>(descriptor->position.y),
-    descriptor->width,
-    descriptor->height);
+    descriptor->width > 0 ? descriptor->width : 100,
+    descriptor->height > 0 ? descriptor->height : theme.nodeHeight);
 }
 
 NodeDescriptor *NodeComponent::makeDescriptor() const {
