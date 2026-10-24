@@ -84,6 +84,18 @@ void GraphViewComponent::recordUI(std::unordered_map<uuid, std::unique_ptr<NodeD
 }
 
 void GraphViewComponent::restoreUI(std::unordered_map<uuid, std::unique_ptr<NodeDescriptor>> &nodeDescriptors) {
+  // Clear any existing UI nodes and edges
+  for (auto &[_, e]: edges) {
+    removeChildComponent(e);
+    delete e;
+  }
+  edges.clear();
+  for (auto &[_, n]: nodes) {
+    removeChildComponent(n);
+    delete n;
+  }
+  nodes.clear();
+
   // erase deleted references
   auto nd_p = std::begin(nodeDescriptors);
   while (nd_p != std::end(nodeDescriptors)) {
