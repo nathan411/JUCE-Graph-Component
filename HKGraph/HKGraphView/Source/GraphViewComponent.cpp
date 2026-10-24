@@ -5,6 +5,7 @@
 GraphViewComponent::GraphViewComponent(Graph *sharedGraph) : graph(sharedGraph) {
   selector = std::make_unique<SelectionComponent>(theme.cSelectionBackground);
   edgeDrawer = std::make_unique<UnboundEdgeComponent>();
+  edgeDrawer->setInterceptsMouseClicks(false, false);
   mouseListener = std::make_unique<ChildrenMouseListener>(this);
   setWantsKeyboardFocus(true);
 
@@ -280,17 +281,25 @@ void GraphViewComponent::pinMouseDrag(NodeComponent::PinComponent *pin, const ju
 }
 
 void GraphViewComponent::pinMouseUp(NodeComponent::PinComponent *pin, const juce::MouseEvent &e) {
-  juce::ignoreUnused(pin);
   auto relativeEvent = e.getEventRelativeTo(this);
   auto position = relativeEvent.getPosition();
-  edgeDrawer->currentEndPosition = position;
+
+  // If we were dragging a cable, check what component is under the mouse upon release
+  if (edgeDrawer->startPin != nullptr) {
+    auto *compUnderMouse = getComponentAt(position);
+    if (auto *targetPin = dynamic_cast<NodeComponent::PinComponent *>(compUnderMouse)) {
+      drawConnector(targetPin);
+    }
+  }
+
+  edgeDrawer->startPin = nullptr;
+  edgeDrawer->endPin = nullptr;
   removeChildComponent(edgeDrawer.get());
 }
 
 void GraphViewComponent::pinMouseEnter(NodeComponent::PinComponent *pin, const juce::MouseEvent &e) {
-  auto relativeEvent = e.getEventRelativeTo(this);
-  auto position = relativeEvent.getPosition();
-  if (edgeDrawer->currentEndPosition == position) {
+  // Also connect if dragging over a pin while mouse is down
+  if (e.mods.isAnyMouseButtonDown() && edgeDrawer->startPin != nullptr) {
     drawConnector(pin);
   }
 }

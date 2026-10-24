@@ -97,6 +97,7 @@ std::optional<Graph::Edge> Graph::connect(const uuid &source_pin_id, const uuid 
       .m_target_pin_id = target_pin_itr->first,
     };
     m_edges[e.m_id] = e;
+    notify_listeners(Event::EdgeAdded);
     return e;
   }
   return std::nullopt;
