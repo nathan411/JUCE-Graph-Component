@@ -8,12 +8,6 @@ GraphViewComponent::GraphViewComponent(Graph *sharedGraph) : graph(sharedGraph) 
   edgeDrawer->setInterceptsMouseClicks(false, false);
   mouseListener = std::make_unique<ChildrenMouseListener>(this);
   setWantsKeyboardFocus(true);
-
-  addAndMakeVisible(hsb);
-  hsb.addListener(this);
-
-  addAndMakeVisible(vsb);
-  vsb.addListener(this);
 }
 
 GraphViewComponent::~GraphViewComponent() {
@@ -30,16 +24,6 @@ void GraphViewComponent::paint(juce::Graphics &g) {
 }
 
 void GraphViewComponent::resized() {
-  auto w = getWidth();
-  auto h = getHeight();
-
-  hsb.setBounds(0, h - 10, w, 10);
-  hsb.setSingleStepSize(1.0f);
-  hsb.setRangeLimits(-10000, 10000);
-
-  vsb.setBounds(w - 10, 0, 10, h);
-  vsb.setSingleStepSize(1.0f);
-  vsb.setRangeLimits(-10000, 10000);
 }
 
 void GraphViewComponent::scrollBarMoved(juce::ScrollBar *scrollBarThatHasMoved, double newRangeStart) {
