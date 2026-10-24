@@ -683,14 +683,22 @@ void GraphViewComponent::mouseUp(const juce::MouseEvent &mouseEvent) {
   removeChildComponent(selector.get());
 }
 
-void GraphViewComponent::mouseWheelMove(const juce::MouseEvent &, const juce::MouseWheelDetails &wheel) {
-  if (wheel.deltaX != 0.0f) {
-    hsb.setCurrentRangeStart(hsb.getCurrentRangeStart() + wheel.deltaX * 10.0f, juce::NotificationType::dontSendNotification);
-    onScroll(&hsb, hsb.getCurrentRangeStart(), true);
+void GraphViewComponent::mouseWheelMove(const juce::MouseEvent &e, const juce::MouseWheelDetails &wheel) {
+  const float sensitivity = 200.0f;
+  float dx = wheel.deltaX * sensitivity;
+  float dy = wheel.deltaY * sensitivity;
+
+  // If user holds Shift or Alt, map the vertical wheel rotation to horizontal panning
+  if (e.mods.isShiftDown() || e.mods.isAltDown()) {
+    if (std::abs(dy) > std::abs(dx)) {
+      dx = dy;
+      dy = 0.0f;
+    }
   }
-  if (wheel.deltaY != 0.0f) {
-    vsb.setCurrentRangeStart(vsb.getCurrentRangeStart() + wheel.deltaY * 10.0f, juce::NotificationType::dontSendNotification);
-    onScroll(&vsb, vsb.getCurrentRangeStart(), true);
+
+  if (dx != 0.0f || dy != 0.0f) {
+    panBy(juce::Point<float>(dx, dy));
+    recordState();
   }
 }
 

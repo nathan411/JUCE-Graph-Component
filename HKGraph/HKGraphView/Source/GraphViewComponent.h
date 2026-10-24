@@ -90,6 +90,9 @@ public:
       }
     }
 
+    void mouseWheelMove(const juce::MouseEvent &e, const juce::MouseWheelDetails &wheel) override {
+      view->mouseWheelMove(e.getEventRelativeTo(view), wheel);
+    }
 
   };
 
